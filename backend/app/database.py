@@ -1,120 +1,135 @@
-import sqlite3
-import json
+import os
+import asyncio
+from typing import Optional, List, Dict, Any
 from datetime import datetime
-from typing import List, Optional
-from .models import Scraper, ScraperRun, Alert, RepairSuggestion, ScraperConfig
+import json
+from .models import Scraper, ScraperRun, Alert, ScraperConfig
 
-DB_FILE = "scraper_sre.db"
+# Get MongoDB URL from env.
+# Use "mock://" to run in-memory for testing/demo without Mongo.
+MONGODB_URL = os.getenv("MONGODB_URL", "mock://")
+DB_NAME = "scraper_sre"
 
-def get_connection():
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+client = None
+db = None
 
-def init_db():
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS scrapers (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        config TEXT,
-        created_at TEXT
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS runs (
-        id TEXT PRIMARY KEY,
-        scraper_id TEXT,
-        timestamp TEXT,
-        status TEXT,
-        duration_ms REAL,
-        items_extracted INTEGER,
-        error_message TEXT,
-        extracted_data_sample TEXT,
-        html_snapshot TEXT,
-        FOREIGN KEY(scraper_id) REFERENCES scrapers(id)
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS alerts (
-        id TEXT PRIMARY KEY,
-        scraper_id TEXT,
-        run_id TEXT,
-        type TEXT,
-        message TEXT,
-        severity TEXT,
-        timestamp TEXT,
-        FOREIGN KEY(run_id) REFERENCES runs(id)
-    )''')
-    conn.commit()
-    conn.close()
+# In-memory storage for mock mode
+mock_storage = {
+    "scrapers": [],
+    "runs": [],
+    "alerts": []
+}
 
-def create_scraper(scraper: Scraper):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("INSERT INTO scrapers VALUES (?, ?, ?, ?)",
-              (scraper.id, scraper.config.name, scraper.config.model_dump_json(), scraper.created_at.isoformat()))
-    conn.commit()
-    conn.close()
+async def connect_to_mongo():
+    global client, db
+    if MONGODB_URL.startswith("mock://"):
+        print("Using In-Memory Mock Database")
+        return
 
-def get_scraper(scraper_id: str) -> Optional[Scraper]:
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM scrapers WHERE id = ?", (scraper_id,))
-    row = c.fetchone()
-    conn.close()
-    if row:
-        config_data = json.loads(row["config"])
-        return Scraper(
-            id=row["id"],
-            config=ScraperConfig(**config_data),
-            created_at=datetime.fromisoformat(row["created_at"])
-        )
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
+        client = AsyncIOMotorClient(MONGODB_URL)
+        db = client[DB_NAME]
+        print(f"Connected to MongoDB at {MONGODB_URL}")
+    except Exception as e:
+        print(f"Failed to connect to MongoDB: {e}")
+
+async def close_mongo_connection():
+    global client
+    if client:
+        client.close()
+
+# --- Scraper Operations ---
+
+async def create_scraper(scraper: Scraper):
+    if MONGODB_URL.startswith("mock://"):
+        mock_storage["scrapers"].append(scraper.model_dump(mode='json'))
+        return
+    await db.scrapers.insert_one(scraper.model_dump(mode='json'))
+
+async def get_scraper(scraper_id: str) -> Optional[Scraper]:
+    if MONGODB_URL.startswith("mock://"):
+        for doc in mock_storage["scrapers"]:
+            if doc["id"] == scraper_id:
+                return Scraper(**doc)
+        return None
+    doc = await db.scrapers.find_one({"id": scraper_id})
+    if doc:
+        return Scraper(**doc)
     return None
 
-def save_run(run: ScraperRun):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("INSERT INTO runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-              (run.id, run.scraper_id, run.timestamp.isoformat(), run.status.value,
-               run.duration_ms, run.items_extracted, run.error_message,
-               json.dumps(run.extracted_data_sample) if run.extracted_data_sample else None,
-               run.html_snapshot))
-    conn.commit()
-    conn.close()
+async def get_all_scrapers() -> List[Scraper]:
+    if MONGODB_URL.startswith("mock://"):
+        return [Scraper(**doc) for doc in mock_storage["scrapers"]]
+    cursor = db.scrapers.find({})
+    scrapers = []
+    async for doc in cursor:
+        scrapers.append(Scraper(**doc))
+    return scrapers
 
-def get_last_successful_run(scraper_id: str, exclude_run_id: Optional[str] = None) -> Optional[ScraperRun]:
-    conn = get_connection()
-    c = conn.cursor()
-    query = """
-        SELECT * FROM runs
-        WHERE scraper_id = ? AND status = 'SUCCESS'
-    """
-    params = [scraper_id]
+# --- Run Operations ---
 
+async def save_run(run: ScraperRun):
+    if MONGODB_URL.startswith("mock://"):
+        mock_storage["runs"].append(run.model_dump(mode='json'))
+        return
+    await db.runs.insert_one(run.model_dump(mode='json'))
+
+async def get_last_successful_run(scraper_id: str, exclude_run_id: Optional[str] = None) -> Optional[ScraperRun]:
+    if MONGODB_URL.startswith("mock://"):
+        # Filter and sort in memory
+        candidates = [r for r in mock_storage["runs"]
+                      if r["scraper_id"] == scraper_id and r["status"] == "SUCCESS"]
+        if exclude_run_id:
+            candidates = [r for r in candidates if r["id"] != exclude_run_id]
+
+        # Sort by timestamp desc
+        candidates.sort(key=lambda x: x["timestamp"], reverse=True)
+
+        if candidates:
+            return ScraperRun(**candidates[0])
+        return None
+
+    query = {"scraper_id": scraper_id, "status": "SUCCESS"}
     if exclude_run_id:
-        query += " AND id != ?"
-        params.append(exclude_run_id)
+        query["id"] = {"$ne": exclude_run_id}
 
-    query += " ORDER BY timestamp DESC LIMIT 1"
-
-    c.execute(query, tuple(params))
-    row = c.fetchone()
-    conn.close()
-    if row:
-        return ScraperRun(
-            id=row["id"],
-            scraper_id=row["scraper_id"],
-            timestamp=datetime.fromisoformat(row["timestamp"]),
-            status=row["status"],
-            duration_ms=row["duration_ms"],
-            items_extracted=row["items_extracted"],
-            error_message=row["error_message"],
-            extracted_data_sample=json.loads(row["extracted_data_sample"]) if row["extracted_data_sample"] else None,
-            html_snapshot=row["html_snapshot"]
-        )
+    doc = await db.runs.find_one(
+        query,
+        sort=[("timestamp", -1)]
+    )
+    if doc:
+        return ScraperRun(**doc)
     return None
 
-def save_alert(alert: Alert):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("INSERT INTO alerts VALUES (?, ?, ?, ?, ?, ?, ?)",
-              (alert.id, alert.scraper_id, alert.run_id, alert.type.value, alert.message, alert.severity, alert.timestamp.isoformat()))
-    conn.commit()
-    conn.close()
+async def get_runs(scraper_id: str, limit: int = 20) -> List[ScraperRun]:
+    if MONGODB_URL.startswith("mock://"):
+        candidates = [r for r in mock_storage["runs"] if r["scraper_id"] == scraper_id]
+        candidates.sort(key=lambda x: x["timestamp"], reverse=True)
+        return [ScraperRun(**doc) for doc in candidates[:limit]]
+
+    cursor = db.runs.find({"scraper_id": scraper_id}).sort("timestamp", -1).limit(limit)
+    runs = []
+    async for doc in cursor:
+        runs.append(ScraperRun(**doc))
+    return runs
+
+# --- Alert Operations ---
+
+async def save_alert(alert: Alert):
+    if MONGODB_URL.startswith("mock://"):
+        mock_storage["alerts"].append(alert.model_dump(mode='json'))
+        return
+    await db.alerts.insert_one(alert.model_dump(mode='json'))
+
+async def get_alerts(scraper_id: str, limit: int = 20) -> List[Alert]:
+    if MONGODB_URL.startswith("mock://"):
+        candidates = [r for r in mock_storage["alerts"] if r["scraper_id"] == scraper_id]
+        candidates.sort(key=lambda x: x["timestamp"], reverse=True)
+        return [Alert(**doc) for doc in candidates[:limit]]
+
+    cursor = db.alerts.find({"scraper_id": scraper_id}).sort("timestamp", -1).limit(limit)
+    alerts = []
+    async for doc in cursor:
+        alerts.append(Alert(**doc))
+    return alerts

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scraper SRE Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Tailwind CSS via CDN for rapid UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 text-white flex-shrink-0">
+            <div class="p-4 border-b border-gray-700">
+                <h1 class="text-xl font-bold">Scraper SRE</h1>
+            </div>
+            <nav class="mt-4">
+                <a href="#" id="nav-scrapers" class="block py-2.5 px-4 bg-gray-700 text-white font-medium hover:bg-gray-600">Scrapers</a>
+                <a href="#" id="nav-runs" class="block py-2.5 px-4 text-gray-300 hover:bg-gray-700 hover:text-white">Runs (Global)</a>
+                <a href="#" id="nav-alerts" class="block py-2.5 px-4 text-gray-300 hover:bg-gray-700 hover:text-white">Alerts</a>
+            </nav>
+            <div class="p-4 mt-auto">
+                 <label class="text-xs text-gray-400">Backend URL:</label>
+                 <input type="text" id="api-url" class="w-full bg-gray-900 text-gray-300 text-xs p-1 mt-1 rounded" value="http://localhost:8000">
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col w-0 overflow-hidden">
+            <header class="bg-white shadow-sm p-4 flex justify-between items-center">
+                <h2 id="page-title" class="text-lg font-medium text-gray-900">Dashboard</h2>
+                <div class="flex items-center space-x-2">
+                    <span id="connection-status" class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Disconnected</span>
+                    <button id="refresh-btn" class="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1.5 rounded">Refresh</button>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto p-6" id="main-content">
+                <!-- Content injected via JS -->
+                <div class="text-center text-gray-500 mt-20">Loading...</div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
