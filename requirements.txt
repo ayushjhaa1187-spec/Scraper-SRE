@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+beautifulsoup4
+lxml
+requests
+pytest
+motor
+dnspython
+odmantic
