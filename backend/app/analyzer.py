@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from .models import ScraperRun, DriftType, Alert
 import uuid
 from datetime import datetime
