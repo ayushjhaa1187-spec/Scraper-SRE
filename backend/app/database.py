@@ -122,6 +122,14 @@ async def save_alert(alert: Alert):
         return
     await db.alerts.insert_one(alert.model_dump(mode='json'))
 
+async def save_alerts(alerts: List[Alert]):
+    if not alerts:
+        return
+    if MONGODB_URL.startswith("mock://"):
+        mock_storage["alerts"].extend([a.model_dump(mode='json') for a in alerts])
+        return
+    await db.alerts.insert_many([a.model_dump(mode='json') for a in alerts])
+
 async def get_alerts(scraper_id: str, limit: int = 20) -> List[Alert]:
     if MONGODB_URL.startswith("mock://"):
         candidates = [r for r in mock_storage["alerts"] if r["scraper_id"] == scraper_id]

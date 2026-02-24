@@ -17,6 +17,7 @@ from .database import (
     save_run as db_save_run,
     get_last_successful_run as db_get_last_successful_run,
     save_alert as db_save_alert,
+    save_alerts as db_save_alerts,
     get_runs as db_get_runs,
     get_all_scrapers as db_get_all_scrapers,
     get_alerts as db_get_alerts
@@ -138,13 +139,17 @@ async def analyze_run(run: ScraperRun):
 
     # Detect Drift
     alerts = detect_drift(run, last_run)
-    for alert in alerts:
-        logger.warning(f"Drift Detected: {alert.message}")
-        await db_save_alert(alert)
+    if alerts:
+        for alert in alerts:
+            logger.warning(f"Drift Detected: {alert.message}")
 
-        # Trigger Repair if it's a schema change or null spike
-        if alert.type in [DriftType.SCHEMA_CHANGE, DriftType.NULL_SPIKE]:
-            await trigger_repair(run, last_run, alert)
+        # Batch save alerts to avoid N+1 queries
+        await db_save_alerts(alerts)
+
+        # Trigger Repair for relevant alerts
+        for alert in alerts:
+            if alert.type in [DriftType.SCHEMA_CHANGE, DriftType.NULL_SPIKE]:
+                await trigger_repair(run, last_run, alert)
 
     # Detect Failure (if status is FAILURE)
     if run.status == RunStatus.FAILURE:
