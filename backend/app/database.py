@@ -1,5 +1,7 @@
 import os
 import asyncio
+import logging
+from urllib.parse import urlparse
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
@@ -9,6 +11,9 @@ from .models import Scraper, ScraperRun, Alert, ScraperConfig
 # Use "mock://" to run in-memory for testing/demo without Mongo.
 MONGODB_URL = os.getenv("MONGODB_URL", "mock://")
 DB_NAME = "scraper_sre"
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 client = None
 db = None
@@ -23,16 +28,23 @@ mock_storage = {
 async def connect_to_mongo():
     global client, db
     if MONGODB_URL.startswith("mock://"):
-        print("Using In-Memory Mock Database")
+        logger.info("Using In-Memory Mock Database")
         return
 
     try:
         from motor.motor_asyncio import AsyncIOMotorClient
         client = AsyncIOMotorClient(MONGODB_URL)
         db = client[DB_NAME]
-        print(f"Connected to MongoDB at {MONGODB_URL}")
+
+        # Redact MONGODB_URL for logging
+        parsed = urlparse(MONGODB_URL)
+        # Reconstruct URL without credentials
+        host_info = parsed.netloc.split("@")[-1]
+        safe_url = f"{parsed.scheme}://{host_info}"
+
+        logger.info(f"Connected to MongoDB at {safe_url}")
     except Exception as e:
-        print(f"Failed to connect to MongoDB: {e}")
+        logger.error(f"Failed to connect to MongoDB: {type(e).__name__}")
 
 async def close_mongo_connection():
     global client
