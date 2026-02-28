@@ -58,7 +58,8 @@ async function loadView(view, id = null) {
         const scraper = await fetchApi(`/scrapers/${id}`);
         const runs = await fetchApi(`/scrapers/${id}/runs`);
         const alerts = await fetchApi(`/scrapers/${id}/alerts`);
-        renderScraperDetails(scraper, runs, alerts);
+        const suggestions = await fetchApi(`/scrapers/${id}/suggestions`);
+        renderScraperDetails(scraper, runs, alerts, suggestions);
     }
 }
 
@@ -99,7 +100,7 @@ function renderScrapersTable(scrapers) {
     mainContent.innerHTML = html;
 }
 
-function renderScraperDetails(scraper, runs, alerts) {
+function renderScraperDetails(scraper, runs, alerts, suggestions) {
     if (!scraper) {
         mainContent.innerHTML = '<div class="text-red-500">Failed to load scraper details.</div>';
         return;
@@ -132,6 +133,14 @@ function renderScraperDetails(scraper, runs, alerts) {
                 <div class="overflow-y-auto max-h-48">
                     ${renderAlertsList(alerts)}
                 </div>
+            </div>
+        </div>
+
+        <!-- Suggestions Section -->
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-2">AI Repair Suggestions ✨</h3>
+            <div class="overflow-y-auto">
+                ${renderSuggestionsList(suggestions)}
             </div>
         </div>
 
@@ -190,3 +199,29 @@ function renderAlertsList(alerts) {
 
 // Initial Load
 loadView("scrapers");
+
+function renderSuggestionsList(suggestions) {
+    if (!suggestions || suggestions.length === 0) {
+        return '<p class="text-sm text-gray-500">No AI repair suggestions available.</p>';
+    }
+
+    return suggestions.map(s => `
+        <div class="mb-3 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-bold text-blue-800">Field: <span class="font-mono bg-blue-100 px-1 rounded">${s.field_name}</span></span>
+                <span class="text-xs font-semibold px-2 py-1 bg-green-100 text-green-800 rounded-full">Confidence: ${s.confidence_score * 100}%</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-sm mt-2">
+                <div>
+                    <span class="text-gray-500 block mb-1 text-xs uppercase">Old Selector</span>
+                    <code class="text-red-600 bg-red-100 px-2 py-1 rounded block">${s.old_selector}</code>
+                </div>
+                <div>
+                    <span class="text-gray-500 block mb-1 text-xs uppercase">Suggested Selector</span>
+                    <code class="text-green-600 bg-green-100 px-2 py-1 rounded block font-bold">${s.suggested_selector}</code>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 italic">Reason: ${s.diff_summary}</p>
+        </div>
+    `).join('');
+}
