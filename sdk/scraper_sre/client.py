@@ -1,10 +1,7 @@
 import time
 import requests
-import traceback
-import json
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from contextlib import contextmanager
-from datetime import datetime
 
 class ScraperObserver:
     def __init__(self, scraper_id: str, api_url: str = "http://localhost:8000/api/v1"):
