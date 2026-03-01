@@ -82,8 +82,7 @@ function renderScrapersTable(scrapers) {
                 <tbody class="bg-white divide-y divide-gray-200">
     `;
 
-    scrapers.forEach(scraper => {
-        html += `
+    html += scrapers.map(scraper => `
             <tr>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${scraper.config.name}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${scraper.config.target_url}</td>
@@ -92,8 +91,7 @@ function renderScrapersTable(scrapers) {
                     <button onclick="loadView('scraper_details', '${scraper.id}')" class="text-indigo-600 hover:text-indigo-900">View Details</button>
                 </td>
             </tr>
-        `;
-    });
+        `).join('');
 
     html += `</tbody></table></div>`;
     mainContent.innerHTML = html;
