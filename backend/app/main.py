@@ -2,7 +2,7 @@ import os
 import motor.motor_asyncio
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import uuid
@@ -49,7 +49,7 @@ async def shutdown_event():
 
 class RegisterRequest(BaseModel):
     name: str
-    target_url: str
+    target_url: HttpUrl
     selectors: Dict[str, str]
 
 class IngestRunRequest(BaseModel):

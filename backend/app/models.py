@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 from datetime import datetime
 from enum import Enum
 
@@ -14,7 +14,7 @@ class DriftType(str, Enum):
 
 class ScraperConfig(BaseModel):
     name: str
-    target_url: str
+    target_url: HttpUrl
     selectors: Dict[str, str]  # e.g. {"price": ".price", "title": "h1"}
 
 class Scraper(BaseModel):
