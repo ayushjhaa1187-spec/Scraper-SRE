@@ -136,6 +136,8 @@ async def analyze_run(run: ScraperRun):
             await db_save_alert(alert)
         return
 
+    scraper = await db_get_scraper(run.scraper_id)
+
     # Detect Drift
     alerts = detect_drift(run, last_run)
     for alert in alerts:
@@ -143,8 +145,8 @@ async def analyze_run(run: ScraperRun):
         await db_save_alert(alert)
 
         # Trigger Repair if it's a schema change or null spike
-        if alert.type in [DriftType.SCHEMA_CHANGE, DriftType.NULL_SPIKE]:
-            await trigger_repair(run, last_run, alert)
+        if scraper and alert.type in [DriftType.SCHEMA_CHANGE, DriftType.NULL_SPIKE]:
+            await trigger_repair(scraper, run, last_run, alert)
 
     # Detect Failure (if status is FAILURE)
     if run.status == RunStatus.FAILURE:
@@ -159,15 +161,12 @@ async def analyze_run(run: ScraperRun):
         )
         await db_save_alert(alert)
         # Trigger Repair logic if we have snapshots
-        if last_run and run.html_snapshot:
-             await trigger_repair(run, last_run, alert)
+        if scraper and last_run and run.html_snapshot:
+             await trigger_repair(scraper, run, last_run, alert)
 
-async def trigger_repair(current_run: ScraperRun, last_run: ScraperRun, alert: Alert):
+async def trigger_repair(scraper: Scraper, current_run: ScraperRun, last_run: ScraperRun, alert: Alert):
     logger.info("Triggering AI Repair...")
 
-    scraper = await db_get_scraper(current_run.scraper_id)
-    if not scraper:
-        return
 
     # For each selector in the config, check if we can fix it.
     broken_selectors = []
