@@ -1,9 +1,6 @@
 import os
-import asyncio
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-import json
-from .models import Scraper, ScraperRun, Alert, ScraperConfig
+from typing import Optional, List
+from .models import Scraper, ScraperRun, Alert
 
 # Get MongoDB URL from env.
 # Use "mock://" to run in-memory for testing/demo without Mongo.
