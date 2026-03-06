@@ -1,6 +1,7 @@
 import os
 import motor.motor_asyncio
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -24,7 +25,13 @@ from .database import (
 from .analyzer import detect_drift
 from .repair import generate_fix_prompt, mock_llm_repair
 
-app = FastAPI(title="Scraper SRE Platform")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await connect_to_mongo()
+    yield
+    await close_mongo_connection()
+
+app = FastAPI(title="Scraper SRE Platform", lifespan=lifespan)
 
 # Allow CORS for frontend
 app.add_middleware(
@@ -39,13 +46,6 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@app.on_event("startup")
-async def startup_event():
-    await connect_to_mongo()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await close_mongo_connection()
 
 class RegisterRequest(BaseModel):
     name: str
