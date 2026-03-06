@@ -2,11 +2,10 @@ import difflib
 from bs4 import BeautifulSoup
 from typing import Optional, Tuple
 
-def get_dom_context(html: str, selector: str) -> str:
+def get_dom_context(soup: BeautifulSoup, selector: str) -> str:
     """
     Extracts a snippet of the DOM around the selector.
     """
-    soup = BeautifulSoup(html, 'lxml')
     element = soup.select_one(selector)
     if element:
         # Get parent to give context
@@ -14,7 +13,7 @@ def get_dom_context(html: str, selector: str) -> str:
     return "Element not found"
 
 def generate_fix_prompt(
-    old_html: str,
+    old_soup: BeautifulSoup,
     new_html: str,
     broken_selector: str,
     field_name: str
@@ -26,7 +25,7 @@ def generate_fix_prompt(
     # In a real system, we'd use more sophisticated diffing to find where the element *moved* to.
     # For now, we just provide the old context (what it looked like) and the new context (the whole body or a relevant section).
 
-    old_context = get_dom_context(old_html, broken_selector)
+    old_context = get_dom_context(old_soup, broken_selector)
 
     # Truncate new_html to avoid token limits in a real scenario,
     # but for this demo we assume small snippets.
