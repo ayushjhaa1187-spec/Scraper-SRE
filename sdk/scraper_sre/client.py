@@ -1,3 +1,4 @@
+import os
 import time
 import requests
 import traceback
@@ -7,7 +8,8 @@ from contextlib import contextmanager
 from datetime import datetime
 
 class ScraperObserver:
-    def __init__(self, scraper_id: str, api_url: str = "http://localhost:8000/api/v1"):
+    def __init__(self, scraper_id: str, api_url: str = "http://localhost:8000/api/v1", api_key: str = None):
+        self.api_key = api_key or os.getenv("SRE_API_KEY", "default-dev-key")
         self.scraper_id = scraper_id
         self.api_url = api_url.rstrip("/")
         self.current_run_data = {
@@ -39,7 +41,8 @@ class ScraperObserver:
         try:
             url = f"{self.api_url}/ingest"
             # print(f"Submitting run to {url} with data: {json.dumps(self.current_run_data, default=str)}")
-            response = requests.post(url, json=self.current_run_data)
+            headers = {"X-API-Key": self.api_key}
+            response = requests.post(url, json=self.current_run_data, headers=headers)
             response.raise_for_status()
             # print(f"Run submitted successfully: {response.json()}")
         except Exception as e:

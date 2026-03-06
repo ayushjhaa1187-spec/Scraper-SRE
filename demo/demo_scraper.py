@@ -10,11 +10,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from sdk.scraper_sre import ScraperObserver
 
 API_URL = "http://localhost:8000/api/v1"
+API_KEY = "default-dev-key"
 
 # 1. Register the Scraper
 def register_scraper():
     print("Registering Scraper...")
-    response = requests.post(f"{API_URL}/register", json={
+    headers = {"X-API-Key": API_KEY}
+    response = requests.post(f"{API_URL}/register", headers=headers, json={
         "name": "Pricing Monitor",
         "target_url": "https://example.com/products",
         "selectors": {"price": ".price"}
@@ -49,7 +51,7 @@ HTML_V2 = """
 
 def run_scraper(scraper_id, html_content, version_name):
     print(f"\n--- Running Scraper ({version_name}) ---")
-    observer = ScraperObserver(scraper_id, api_url=API_URL)
+    observer = ScraperObserver(scraper_id, api_url=API_URL, api_key=API_KEY)
 
     with observer.monitor():
         # Simulate scraping logic
