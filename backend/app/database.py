@@ -14,6 +14,7 @@ client = None
 db = None
 
 # In-memory storage for mock mode
+MAX_MOCK_STORAGE_SIZE = 100
 mock_storage = {
     "scrapers": [],
     "runs": [],
@@ -44,6 +45,8 @@ async def close_mongo_connection():
 async def create_scraper(scraper: Scraper):
     if MONGODB_URL.startswith("mock://"):
         mock_storage["scrapers"].append(scraper.model_dump(mode='json'))
+        if len(mock_storage["scrapers"]) > MAX_MOCK_STORAGE_SIZE:
+            mock_storage["scrapers"].pop(0)
         return
     await db.scrapers.insert_one(scraper.model_dump(mode='json'))
 
@@ -72,6 +75,8 @@ async def get_all_scrapers() -> List[Scraper]:
 async def save_run(run: ScraperRun):
     if MONGODB_URL.startswith("mock://"):
         mock_storage["runs"].append(run.model_dump(mode='json'))
+        if len(mock_storage["runs"]) > MAX_MOCK_STORAGE_SIZE:
+            mock_storage["runs"].pop(0)
         return
     await db.runs.insert_one(run.model_dump(mode='json'))
 
@@ -119,6 +124,8 @@ async def get_runs(scraper_id: str, limit: int = 20) -> List[ScraperRun]:
 async def save_alert(alert: Alert):
     if MONGODB_URL.startswith("mock://"):
         mock_storage["alerts"].append(alert.model_dump(mode='json'))
+        if len(mock_storage["alerts"]) > MAX_MOCK_STORAGE_SIZE:
+            mock_storage["alerts"].pop(0)
         return
     await db.alerts.insert_one(alert.model_dump(mode='json'))
 
