@@ -1,84 +1,227 @@
-# Scraper SRE Platform (Full Stack MVP)
+# Scraper SRE Platform
 
-This is a comprehensive "SRE Layer" for web scraping operations. It provides observability (monitoring success rates, schema drift) and a self-healing mechanism using simulated AI repair.
+![Python Badge](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)
+![FastAPI Badge](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi&logoColor=white)
+![JavaScript Badge](https://img.shields.io/badge/JavaScript-ES6%2B-F7DF1E?logo=javascript&logoColor=black)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-## Architecture
+An SRE (Site Reliability Engineering) observability layer and self-healing engine for web scraping operations. It monitors scraper success rates, detects schema drift and null spikes, and leverages AI to generate repair suggestions for broken CSS selectors.
 
-- **Backend (`backend/`)**: FastAPI application deployed on Vercel.
-  - Ingests run metrics.
-  - Detects failures and schema drift.
-  - Generates repair suggestions.
-  - Uses **MongoDB Atlas** for persistence (with local mock fallback).
-- **Frontend (`frontend/`)**: Single Page Dashboard (HTML/JS/Tailwind).
-  - Deployed via GitHub Pages or Vercel.
-  - Visualizes scrapers, run history, and active alerts.
-- **SDK (`sdk/`)**: Python client library to instrument your scrapers.
-- **Demo (`demo/`)**: Example scraper showing the workflow.
+---
 
-## Deployment
+## 📸 Demo / Screenshot
 
-### 1. Database (MongoDB Atlas)
-- Create a Cluster on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
-- Get your Connection String (SRV format).
-- Allow access from anywhere (0.0.0.0/0) or Vercel IPs.
+> *(Add a screenshot or GIF of the Scraper SRE Dashboard showing scraper metrics, runs, and alerts here)*
 
-### 2. Backend (Vercel)
-The backend is configured for Vercel Serverless Functions (`vercel.json`).
+---
 
-1.  Install Vercel CLI: `npm i -g vercel`
-2.  Deploy:
-    ```bash
-    vercel
-    ```
-3.  Set Environment Variable:
-    -   `MONGODB_URL`: Your MongoDB Connection String.
-    -   (If not set, it defaults to In-Memory Mock Mode).
+## ✨ Features
 
-### 3. Frontend (GitHub Pages / Vercel)
-You can deploy the `frontend/` directory as a static site.
+- **📊 Scraper Observability**: Track every execution of your scrapers, logging success/failure states, durations, and extraction counts.
+- **🚨 Schema Drift Detection**: Receive immediate alerts when the targeted website's data structure changes or keys disappear.
+- **📉 Null Spike Alerts**: Detect silent failures where a scraper successfully runs but returns 0 items unexpectedly.
+- **🤖 AI-Powered Repair Engine**: When a selector breaks, the platform compares pre-failure and post-failure HTML snapshots to automatically suggest an updated CSS selector.
+- **💻 Universal Dashboard**: Single-page application (SPA) dashboard to visualize the real-time status of all active scrapers and alerts.
+- **🔌 Python SDK**: Drop-in Python client (`ScraperObserver`) to instrument your existing scraping scripts with minimal overhead.
 
--   **Vercel**: `vercel frontend`
--   **GitHub Pages**: Push to `gh-pages` branch or configure Settings to serve `frontend/` directory.
--   **Configuration**: Update the "Backend URL" in the UI to point to your deployed Backend URL.
+---
 
-## Local Development
+## 🛠️ Tech Stack
 
-1.  **Install Dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
+- **Backend**: Python, FastAPI, Motor (Async MongoDB), BeautifulSoup4, LXML
+- **Frontend**: HTML5, Vanilla JavaScript, Tailwind CSS (via CDN)
+- **Database**: MongoDB Atlas (with local in-memory fallback for testing)
+- **Deployment**: Vercel (Backend API) / GitHub Pages (Frontend UI)
 
-2.  **Run Full Stack Demo**:
-    ```bash
-    ./run_demo.sh
-    ```
-    This script starts:
-    -   Backend API at `http://localhost:8000` (Mock DB Mode by default)
-    -   Frontend Dashboard at `http://localhost:8080`
-    -   Runs a demo scraper to populate initial data.
+---
 
-3.  **Manual Start**:
-    -   Backend: `uvicorn backend.app.main:app --reload`
-    -   Frontend: `cd frontend && python -m http.server 8080`
+## 📂 Project Structure
 
-## Features
-
-1.  **Observability**: Tracks every scraper run (success/fail, duration, items extracted).
-2.  **Schema Drift Detection**: Alerts if the data structure changes (e.g., keys disappear).
-3.  **Null Spike Detection**: Alerts if a run returns 0 items when it usually returns data.
-4.  **AI Repair Engine**: When a selector breaks, it compares the old HTML snapshot with the new one and generates an LLM prompt to fix the CSS selector.
-5.  **Dashboard**: View live status of all scrapers.
-
-## Project Structure
-
+```text
+├── api/                   # Vercel entrypoint for serverless deployment
+│   └── index.py
+├── backend/               # FastAPI Application
+│   ├── app/               # Core Application Logic
+│   │   ├── analyzer.py    # Drift and failure detection logic
+│   │   ├── database.py    # MongoDB & Mock in-memory connections
+│   │   ├── main.py        # FastAPI routes and server init
+│   │   ├── models.py      # Pydantic data models
+│   │   └── repair.py      # AI repair prompt generation
+│   └── tests/             # Backend test suite
+├── demo/                  # Example scraper implementation
+│   └── demo_scraper.py    # Script demonstrating the SDK in action
+├── frontend/              # Static Dashboard SPA
+│   ├── index.html
+│   ├── script.js
+│   └── style.css
+├── sdk/                   # Python Client SDK
+│   └── scraper_sre/       # Core SDK package
+│       └── client.py      # ScraperObserver context manager
+├── README.md              # Project documentation
+├── requirements.txt       # Python dependencies
+├── run_demo.sh            # Local orchestrator for backend, frontend, and demo
+└── vercel.json            # Vercel serverless configuration
 ```
-├── api/                # Vercel entrypoint
-├── backend/            # FastAPI Application
-│   ├── app/            # App Logic (Models, DB, Analysis)
-│   └── tests/          # Tests
-├── frontend/           # Dashboard (HTML/JS)
-├── sdk/                # Python Client SDK
-├── demo/               # Demo Scraper Script
-├── vercel.json         # Vercel Config
-└── run_demo.sh         # Local Orchestrator
+
+---
+
+## ⚙️ Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Python**: v3.8 or higher
+- **Node.js & npm**: Optional, required only if using the Vercel CLI (`npm i -g vercel`)
+- **MongoDB Atlas**: Optional, needed for persistence. The app defaults to an in-memory mock database if no URL is provided.
+
+---
+
+## 🚀 Installation & Setup
+
+### Local Development
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/scraper-sre-platform.git
+   cd scraper-sre-platform
+   ```
+
+2. **Install Python dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Run the Full Stack Demo**
+   The project includes a convenient bash script that boots the backend, serves the frontend, and runs a demo scraper.
+   ```bash
+   ./run_demo.sh
+   ```
+   *This starts the API on `http://localhost:8000` and the UI on `http://localhost:8080`.*
+
+### Manual Start
+
+To start the components individually:
+
+**Backend:**
+```bash
+uvicorn backend.app.main:app --reload --port 8000
 ```
+
+**Frontend:**
+```bash
+cd frontend
+python3 -m http.server 8080
+```
+
+---
+
+## 💻 Usage
+
+Instrument your existing Python scrapers using the provided `sdk`.
+
+First, register your scraper to get an ID. Then, wrap your scraping logic in the `ScraperObserver.monitor()` context manager.
+
+```python
+import requests
+from bs4 import BeautifulSoup
+from sdk.scraper_sre import ScraperObserver
+
+API_URL = "http://localhost:8000/api/v1"
+
+# 1. Register the Scraper to get a unique scraper_id
+response = requests.post(f"{API_URL}/register", json={
+    "name": "E-commerce Monitor",
+    "target_url": "https://example-store.com/products",
+    "selectors": {"price": ".product-price"}
+})
+scraper_id = response.json()['id']
+
+# 2. Instrument your scraping logic
+observer = ScraperObserver(scraper_id, api_url=API_URL)
+
+html_content = "<html><body><div class='product-price'>$29.99</div></body></html>"
+
+with observer.monitor():
+    soup = BeautifulSoup(html_content, 'html.parser')
+    price_element = soup.select_one(".product-price")
+
+    extracted_data = []
+    if price_element:
+        extracted_data.append({"price": price_element.text})
+
+    # Capture the snapshot and data for the SRE platform to analyze
+    observer.capture_snapshot(html_content)
+    observer.capture_data(extracted_data)
+```
+
+---
+
+## 🔐 Environment Variables
+
+| Variable | Description | Default | Example |
+| :--- | :--- | :--- | :--- |
+| `MONGODB_URL` | The MongoDB connection string (SRV format). If unset, the app uses an in-memory mock database. | `mock://` | `mongodb+srv://user:pass@cluster.mongodb.net/test` |
+
+---
+
+## 🌐 API Reference
+
+The backend exposes a RESTful JSON API.
+
+### `POST /api/v1/register`
+Registers a new scraper configuration.
+- **Payload:** `{"name": "string", "target_url": "string", "selectors": {"key": "selector"}}`
+- **Returns:** Scraper object with a generated `id`.
+
+### `POST /api/v1/ingest`
+Ingests metrics for a single scraper run. Triggers asynchronous drift analysis.
+- **Payload:** `{"scraper_id": "string", "status": "SUCCESS|FAILURE", "duration_ms": float, "items_extracted": int, ...}`
+- **Returns:** `{"run_id": "string", "status": "processing"}`
+
+### `GET /api/v1/scrapers`
+Retrieves a list of all registered scrapers.
+- **Returns:** Array of Scraper objects.
+
+### `GET /api/v1/scrapers/{scraper_id}/alerts`
+Retrieves all alerts generated for a specific scraper.
+- **Returns:** Array of Alert objects.
+
+---
+
+## 🏗️ Configuration
+
+### Deployment via Vercel
+
+The backend is pre-configured for Vercel Serverless Functions via the included `vercel.json` and `api/index.py` files.
+
+1. Install the Vercel CLI: `npm i -g vercel`
+2. Authenticate and deploy:
+   ```bash
+   vercel
+   ```
+3. Set your `MONGODB_URL` inside the Vercel dashboard environment variables for persistence.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! If you'd like to improve the AI repair engine, add new drift detection patterns, or enhance the UI:
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgements
+
+- Built with [FastAPI](https://fastapi.tiangolo.com/) for high-performance async endpoints.
+- Uses [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) for HTML parsing and DOM extraction.
+- Styled with [Tailwind CSS](https://tailwindcss.com/).
