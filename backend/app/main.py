@@ -8,7 +8,7 @@ from datetime import datetime
 import uuid
 import logging
 
-from .models import Scraper, ScraperConfig, ScraperRun, Alert, RepairSuggestion, RunStatus, DriftType
+from .models import Scraper, ScraperConfig, ScraperRun, Alert, RunStatus, DriftType
 from .database import (
     connect_to_mongo,
     close_mongo_connection,
