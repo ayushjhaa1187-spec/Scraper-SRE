@@ -1,6 +1,4 @@
-import difflib
 from bs4 import BeautifulSoup
-from typing import Optional, Tuple
 
 def get_dom_context(html: str, selector: str) -> str:
     """
