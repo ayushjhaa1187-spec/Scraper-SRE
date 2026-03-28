@@ -1,0 +1,7 @@
+🔒 Fix: Missing Input Validation on Registration Request
+
+🎯 **What:** The vulnerability fixed is the missing input validation on the `RegisterRequest` payload in `backend/app/main.py`. The `target_url` accepted arbitrary strings, and the `name` and `selectors` fields had no length constraints.
+
+⚠️ **Risk:** Without proper validation, the backend is vulnerable to Server-Side Request Forgery (SSRF) if it blindly attempts to process malicious or invalid internal URIs (e.g., `file://`, local network addresses) registered via `target_url`. Furthermore, the absence of length boundaries on strings and the `selectors` dictionary exposes the application to resource exhaustion and potential memory-based Denial of Service (DoS) attacks from excessively large payloads.
+
+🛡️ **Solution:** The fix implements Pydantic's built-in `HttpUrl` for the `target_url` to strictly enforce standard HTTP/HTTPS schemes. It also adds length boundaries using `Field(..., max_length=X)` to `name` (`max_length=255`) and the `selectors` dict (`max_length=100`) to cap the memory footprint per request. The `req.target_url` is explicitly cast to a string when creating the `ScraperConfig` to maintain downstream compatibility. Comprehensive unit tests were added to ensure validation and that invalid inputs correctly return a `422 Unprocessable Entity` error.

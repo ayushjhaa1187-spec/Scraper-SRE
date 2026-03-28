@@ -2,7 +2,7 @@ import os
 import motor.motor_asyncio
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import uuid
@@ -48,9 +48,9 @@ async def shutdown_event():
     await close_mongo_connection()
 
 class RegisterRequest(BaseModel):
-    name: str
-    target_url: str
-    selectors: Dict[str, str]
+    name: str = Field(..., min_length=1, max_length=255)
+    target_url: HttpUrl
+    selectors: Dict[str, str] = Field(..., max_length=100)
 
 class IngestRunRequest(BaseModel):
     scraper_id: str
@@ -68,7 +68,7 @@ async def root():
 @app.post("/api/v1/register", response_model=Scraper)
 async def register_scraper(req: RegisterRequest):
     scraper_id = str(uuid.uuid4())
-    config = ScraperConfig(name=req.name, target_url=req.target_url, selectors=req.selectors)
+    config = ScraperConfig(name=req.name, target_url=str(req.target_url), selectors=req.selectors)
     scraper = Scraper(id=scraper_id, config=config, created_at=datetime.now())
     await db_create_scraper(scraper)
     return scraper
