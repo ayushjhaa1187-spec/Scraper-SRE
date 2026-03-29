@@ -12,8 +12,6 @@ const apiUrlInput = document.getElementById("api-url");
 
 // Listeners
 document.getElementById("nav-scrapers").addEventListener("click", () => loadView("scrapers"));
-// document.getElementById("nav-runs").addEventListener("click", () => loadView("runs"));
-// document.getElementById("nav-alerts").addEventListener("click", () => loadView("alerts"));
 refreshBtn.addEventListener("click", () => loadView(currentView));
 apiUrlInput.addEventListener("change", () => loadView(currentView));
 
