@@ -1,5 +1,6 @@
 import os
 import motor.motor_asyncio
+from bs4 import BeautifulSoup
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -188,11 +189,15 @@ async def trigger_repair(current_run: ScraperRun, last_run: ScraperRun, alert: A
              broken_selectors.append((key, sel))
 
     # Generate Prompts
+    old_soup = None
+    if last_run.html_snapshot and current_run.html_snapshot:
+        old_soup = BeautifulSoup(last_run.html_snapshot, 'lxml')
+
     for field, selector in broken_selectors:
         # We need the OLD snapshot to show context.
-        if last_run.html_snapshot and current_run.html_snapshot:
+        if old_soup and current_run.html_snapshot:
             prompt = generate_fix_prompt(
-                old_html=last_run.html_snapshot,
+                old_soup=old_soup,
                 new_html=current_run.html_snapshot,
                 broken_selector=selector,
                 field_name=field
