@@ -19,7 +19,9 @@ from .database import (
     save_alert as db_save_alert,
     get_runs as db_get_runs,
     get_all_scrapers as db_get_all_scrapers,
-    get_alerts as db_get_alerts
+    get_alerts as db_get_alerts,
+    save_suggestion as db_save_suggestion,
+    get_suggestions as db_get_suggestions
 )
 from .analyzer import detect_drift
 from .repair import generate_fix_prompt, mock_llm_repair
@@ -91,6 +93,11 @@ async def list_runs(scraper_id: str):
 @app.get("/api/v1/scrapers/{scraper_id}/alerts", response_model=List[Alert])
 async def list_alerts(scraper_id: str):
     return await db_get_alerts(scraper_id)
+
+@app.get("/api/v1/scrapers/{scraper_id}/suggestions", response_model=List[RepairSuggestion])
+async def list_suggestions(scraper_id: str):
+    return await db_get_suggestions(scraper_id)
+
 
 @app.post("/api/v1/ingest")
 async def ingest_run(req: IngestRunRequest, background_tasks: BackgroundTasks):
@@ -199,7 +206,19 @@ async def trigger_repair(current_run: ScraperRun, last_run: ScraperRun, alert: A
             )
 
             # Call LLM (Mock)
-            suggestion = mock_llm_repair(prompt)
+            suggestion_text = mock_llm_repair(prompt)
 
-            logger.info(f"AI Suggestion for {field}: {suggestion}")
-            # In a real app, save this suggestion to DB.
+            logger.info(f"AI Suggestion for {field}: {suggestion_text}")
+
+            # Save this suggestion to DB.
+            suggestion = RepairSuggestion(
+                id=str(uuid.uuid4()),
+                alert_id=alert.id,
+                field_name=field,
+                old_selector=selector,
+                suggested_selector=suggestion_text,
+                confidence_score=0.92, # mock confidence score
+                diff_summary="Detected class name change." # mock diff summary
+            )
+            await db_save_suggestion(suggestion)
+

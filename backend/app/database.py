@@ -3,7 +3,7 @@ import asyncio
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
-from .models import Scraper, ScraperRun, Alert, ScraperConfig
+from .models import Scraper, ScraperRun, Alert, ScraperConfig, RepairSuggestion
 
 # Get MongoDB URL from env.
 # Use "mock://" to run in-memory for testing/demo without Mongo.
@@ -17,7 +17,8 @@ db = None
 mock_storage = {
     "scrapers": [],
     "runs": [],
-    "alerts": []
+    "alerts": [],
+    "suggestions": []
 }
 
 async def connect_to_mongo():
@@ -133,3 +134,39 @@ async def get_alerts(scraper_id: str, limit: int = 20) -> List[Alert]:
     async for doc in cursor:
         alerts.append(Alert(**doc))
     return alerts
+
+
+# --- Suggestion Operations ---
+
+async def save_suggestion(suggestion: RepairSuggestion):
+    if MONGODB_URL.startswith("mock://"):
+        mock_storage["suggestions"].append(suggestion.model_dump(mode='json'))
+        return
+    await db.suggestions.insert_one(suggestion.model_dump(mode='json'))
+
+async def get_suggestions(scraper_id: str, limit: int = 20) -> List[RepairSuggestion]:
+    # In mock mode we need to link suggestions back to their scrapers.
+    # We can do this via the alert_id -> scraper_id mapping,
+    # or just assume the suggestion includes the scraper_id if we want to change the model,
+    # but the model only has alert_id. Let's look up the alerts.
+
+    if MONGODB_URL.startswith("mock://"):
+        # Get alerts for this scraper
+        scraper_alert_ids = {a["id"] for a in mock_storage["alerts"] if a["scraper_id"] == scraper_id}
+        candidates = [s for s in mock_storage["suggestions"] if s["alert_id"] in scraper_alert_ids]
+        # We don't have timestamp in RepairSuggestion, so just return latest added
+        return [RepairSuggestion(**doc) for doc in reversed(candidates[-limit:])]
+
+    # MongoDB mode
+    # Get all alert IDs for this scraper
+    alerts_cursor = db.alerts.find({"scraper_id": scraper_id}, {"id": 1})
+    alert_ids = [doc["id"] async for doc in alerts_cursor]
+
+    if not alert_ids:
+        return []
+
+    cursor = db.suggestions.find({"alert_id": {"$in": alert_ids}}).sort("_id", -1).limit(limit)
+    suggestions = []
+    async for doc in cursor:
+        suggestions.append(RepairSuggestion(**doc))
+    return suggestions
