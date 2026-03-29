@@ -1,6 +1,8 @@
 import os
 import motor.motor_asyncio
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Security
+from fastapi.security.api_key import APIKeyHeader
+from starlette.status import HTTP_403_FORBIDDEN
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -61,12 +63,24 @@ class IngestRunRequest(BaseModel):
     extracted_data_sample: Optional[List[Dict[str, Any]]] = None
     html_snapshot: Optional[str] = None
 
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def get_api_key(api_key_header: str = Security(api_key_header)):
+    # Simple static key for now, ideally load from env var in production
+    expected_api_key = os.environ.get("API_KEY", "secret_api_key")
+    if api_key_header == expected_api_key:
+        return api_key_header
+    raise HTTPException(
+        status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
+    )
+
 @app.get("/")
 async def root():
     return {"message": "Scraper SRE Platform API is running"}
 
 @app.post("/api/v1/register", response_model=Scraper)
-async def register_scraper(req: RegisterRequest):
+async def register_scraper(req: RegisterRequest, api_key: str = Depends(get_api_key)):
     scraper_id = str(uuid.uuid4())
     config = ScraperConfig(name=req.name, target_url=req.target_url, selectors=req.selectors)
     scraper = Scraper(id=scraper_id, config=config, created_at=datetime.now())
@@ -74,26 +88,26 @@ async def register_scraper(req: RegisterRequest):
     return scraper
 
 @app.get("/api/v1/scrapers", response_model=List[Scraper])
-async def list_scrapers():
+async def list_scrapers(api_key: str = Depends(get_api_key)):
     return await db_get_all_scrapers()
 
 @app.get("/api/v1/scrapers/{scraper_id}", response_model=Scraper)
-async def get_scraper_details(scraper_id: str):
+async def get_scraper_details(scraper_id: str, api_key: str = Depends(get_api_key)):
     scraper = await db_get_scraper(scraper_id)
     if not scraper:
         raise HTTPException(status_code=404, detail="Scraper not found")
     return scraper
 
 @app.get("/api/v1/scrapers/{scraper_id}/runs", response_model=List[ScraperRun])
-async def list_runs(scraper_id: str):
+async def list_runs(scraper_id: str, api_key: str = Depends(get_api_key)):
     return await db_get_runs(scraper_id)
 
 @app.get("/api/v1/scrapers/{scraper_id}/alerts", response_model=List[Alert])
-async def list_alerts(scraper_id: str):
+async def list_alerts(scraper_id: str, api_key: str = Depends(get_api_key)):
     return await db_get_alerts(scraper_id)
 
 @app.post("/api/v1/ingest")
-async def ingest_run(req: IngestRunRequest, background_tasks: BackgroundTasks):
+async def ingest_run(req: IngestRunRequest, background_tasks: BackgroundTasks, api_key: str = Depends(get_api_key)):
     # 1. Save the run
     run_id = str(uuid.uuid4())
     run = ScraperRun(
