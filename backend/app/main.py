@@ -26,10 +26,17 @@ from .repair import generate_fix_prompt, mock_llm_repair
 
 app = FastAPI(title="Scraper SRE Platform")
 
+# Get allowed origins from environment variable, default to local dev URLs
+allowed_origins_str = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "http://localhost:8080,http://localhost:3000,http://127.0.0.1:8080,http://127.0.0.1:3000"
+)
+allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+
 # Allow CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For dev/demo. In production, restrict this.
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
