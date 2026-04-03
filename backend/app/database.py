@@ -116,6 +116,14 @@ async def get_runs(scraper_id: str, limit: int = 20) -> List[ScraperRun]:
 
 # --- Alert Operations ---
 
+async def save_alerts(alerts: List[Alert]):
+    if not alerts:
+        return
+    if MONGODB_URL.startswith("mock://"):
+        mock_storage["alerts"].extend([alert.model_dump(mode="json") for alert in alerts])
+        return
+    await db.alerts.insert_many([alert.model_dump(mode="json") for alert in alerts])
+
 async def save_alert(alert: Alert):
     if MONGODB_URL.startswith("mock://"):
         mock_storage["alerts"].append(alert.model_dump(mode='json'))
