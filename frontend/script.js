@@ -9,6 +9,7 @@ const connectionStatus = document.getElementById("connection-status");
 const refreshBtn = document.getElementById("refresh-btn");
 const pageTitle = document.getElementById("page-title");
 const apiUrlInput = document.getElementById("api-url");
+const apiKeyInput = document.getElementById("api-key");
 
 // Listeners
 document.getElementById("nav-scrapers").addEventListener("click", () => loadView("scrapers"));
@@ -16,12 +17,13 @@ document.getElementById("nav-scrapers").addEventListener("click", () => loadView
 // document.getElementById("nav-alerts").addEventListener("click", () => loadView("alerts"));
 refreshBtn.addEventListener("click", () => loadView(currentView));
 apiUrlInput.addEventListener("change", () => loadView(currentView));
+apiKeyInput.addEventListener("change", () => loadView(currentView));
 
 // Utility: Fetch with error handling
 async function fetchApi(endpoint) {
     const baseUrl = apiUrlInput.value.replace(/\/$/, ""); // remove trailing slash
     try {
-        const response = await fetch(`${baseUrl}/api/v1${endpoint}`);
+        const response = await fetch(`${baseUrl}/api/v1${endpoint}`, { headers: { "X-API-Key": apiKeyInput.value } });
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         updateStatus(true);
